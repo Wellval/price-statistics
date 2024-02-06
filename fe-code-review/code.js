@@ -52,7 +52,7 @@ app.post('/api/extract', upload.single('file'), async (req, res) => {
             return res.status(500).json({requestID, message: 'Failed to get debt collectors'});
         }
 
-        if (await db.hasUserRequestKey(idUser) && user.age) { //FIX: check age, not only if there's a request or not
+        if (await db.hasUserRequestKey(idUser) && user.age) {
             return res.json({requestID, step: 999, status: 'DONE', message: 'Emails already sent'});
         }
 
@@ -74,7 +74,6 @@ app.post('/api/extract', upload.single('file'), async (req, res) => {
                 await db.setUserRequestKey(requestKey, idUser)
                 && await db.setUserCollectorRequestKey(requestKey, idUser, idCollector)
             ) {
-                /* prepare email */
                 const sendConfig = prepareEmailConfig(projects[project].email, collectorEmail, collectorName, idUser, idCollector, requestKey, hash);
                 logDebug('Send config:', sendConfig);
 
@@ -84,11 +83,9 @@ app.post('/api/extract', upload.single('file'), async (req, res) => {
                     logDebug('extract() setEmailLog error=', e);
                 }
 
-                /* send email */
                 const resp = await email.send(sendConfig, projects[project].email.apiKey);
                 logDebug('extract() resp=', resp);
 
-                // update DB with result
                 await db.setUserCollectorRequestKeyRes(requestKey, idUser, idCollector, resp);
 
                 if (!sentStatus[collectorName])
@@ -113,15 +110,11 @@ app.post('/api/extract', upload.single('file'), async (req, res) => {
 
         await db.updateStatus(requestID, 500, '');
 
-        /* prepare summary email */
         const summaryConfig = prepareSummaryEmailConfig(projects[project].email, sentStatus);
         logDebug('Summary config:', summaryConfig);
 
-        /* send email */
         const resp = await sendEmail(sendConfig, projects[project].email.apiKey);
         logDebug('extract() resp=', resp);
-        //const respSummary = await email.send(sendConfig, config.projects[project].email.apiKey);
-        //logDebug('extract() summary resp=', respSummary);
 
         await db.updateStatus(requestID, 900, '');
     }
